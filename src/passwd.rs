@@ -6,8 +6,8 @@ const BASE_CHAR:[char; 62] = [
     '0','1','2','3','4','5','6','7','8','9'
 ];
 
-pub(crate) fn generate(len: usize) -> String {
-    let mut mt = mt::MersenneTwister::new();
+pub(crate) fn generate(len: usize, seed: u32) -> String {
+    let mut mt = mt::MersenneTwister::new(seed);
     let mut passwd: Vec<char> = Vec::default();
     for _i in 0..len {
         let index: usize = (mt.next() % 61) as usize;

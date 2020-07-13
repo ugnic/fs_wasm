@@ -1,26 +1,45 @@
 use crate::mt;
 use crate::crc;
+use flate2::Compression;
+use flate2::write::DeflateEncoder;
+use std::io::Write;
 
 pub struct ZipCrypto {
+    seed: u32,
     key_0: u32,
     key_1: u32,
     key_2: u32,
 }
 
 impl ZipCrypto {
-    pub fn new() -> ZipCrypto {
+    pub fn new(seed: u32) -> ZipCrypto {
         ZipCrypto {
+            seed,
             key_0: 0x12345678,
             key_1: 0x23456789,
             key_2: 0x34567890,
         }
     }
 
+    pub fn deflate_encode_raw_stream(level: u32, file_raw: Vec<Vec<u8>>) -> Vec<u8> {
+        let mut e = DeflateEncoder::new(Vec::new(), Compression::new(level));
+        for base_raw in file_raw.iter() { e.write_all(&*base_raw).unwrap(); };
+        let compressed_bytes = e.finish();
+        return compressed_bytes.unwrap();
+    }
+
+    pub fn deflate_encode_raw(level: u32, file_raw: Vec<u8>) -> Vec<u8> {
+        let mut e = DeflateEncoder::new(Vec::new(), Compression::new(level));
+        e.write_all(&*file_raw).unwrap();
+        let compressed_bytes = e.finish();
+        return compressed_bytes.unwrap();
+    }
+
     pub fn encrypt(&mut self, file_raw: &[u8], passwd: &str, crc32: u32) -> Vec<u8> {
         for byte in passwd.bytes() {
             self.update(byte);
         }
-        let random_header = ZipCrypto::random_header(crc32);
+        let random_header = self.random_header(crc32);
         let encrypt_header =self.upd(random_header, true);
         let encrypt_body: Vec<u8> = self.upd(Vec::from(file_raw), true);
         let mut encrypt: Vec<u8> = vec![];
@@ -56,8 +75,8 @@ impl ZipCrypto {
         out_buf
     }
 
-    fn random_header(crc: u32) -> Vec<u8> {
-        let mut mt = mt::MersenneTwister::new();
+    fn random_header(&mut self, crc: u32) -> Vec<u8> {
+        let mut mt = mt::MersenneTwister::new(self.seed);
         let mut i: Vec<u8> = Vec::with_capacity(12);
         let mut counter = 0;
 

@@ -1,8 +1,8 @@
 use crate::mt;
 
-pub(crate) fn generate() -> Vec<u16> {
+pub(crate) fn generate(seed: u32) -> Vec<u16> {
     let mut uuid: Vec<u16> = Vec::with_capacity(16);
-    let mut mt = mt::MersenneTwister::new();
+    let mut mt = mt::MersenneTwister::new(seed);
     for _i in 0..16 {
         let digits = (mt.next() % 0xff) as u16;
         uuid.push(digits);

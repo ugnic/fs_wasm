@@ -1,15 +1,10 @@
-use chrono::{DateTime, Local};
-
 pub(crate) struct MersenneTwister {
     i: usize,
     x: Vec<u32>
 }
 
 impl MersenneTwister {
-    pub(crate) fn new() -> MersenneTwister {
-        let dt: DateTime<Local> = Local::now();
-        let seed: u32 = dt.timestamp_subsec_nanos();
-
+    pub(crate) fn new(seed: u32) -> MersenneTwister {
         let mut x: Vec<u32> = Vec::with_capacity(624);
         x.push(seed & 0xffffffff);
 
