@@ -21,13 +21,6 @@ impl ZipCrypto {
         }
     }
 
-    pub fn deflate_encode_raw_stream(level: u32, file_raw: Vec<Vec<u8>>) -> Vec<u8> {
-        let mut e = DeflateEncoder::new(Vec::new(), Compression::new(level));
-        for base_raw in file_raw.iter() { e.write_all(&*base_raw).unwrap(); };
-        let compressed_bytes = e.finish();
-        return compressed_bytes.unwrap();
-    }
-
     pub fn deflate_encode_raw(level: u32, file_raw: Vec<u8>) -> Vec<u8> {
         let mut e = DeflateEncoder::new(Vec::new(), Compression::new(level));
         e.write_all(&*file_raw).unwrap();

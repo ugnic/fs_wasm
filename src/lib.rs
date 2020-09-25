@@ -8,6 +8,8 @@ mod mt;
 extern crate wasm_bindgen;
 use wasm_bindgen::prelude::*;
 use std::collections::HashMap;
+use std::fs::File as FII;
+use std::io::Read;
 
 #[wasm_bindgen]
 extern "C" {
@@ -145,64 +147,36 @@ pub struct File {
 }
 
 impl File {
-    fn new() -> File {
+    fn new(uuid: &String, file_name: &str, file_size: u64, last_modified: &[u16], file_raw: Vec<u8>, level: u32) -> File {
+        let file_name_raw = file_name.parse().unwrap();
+        let file_name = format!("{}{}", *uuid, file_name_raw);
+
+        let file_size = if file_size < 0xffffffff { file_size as u32 } else { 0xffffffff };
+
+        let last_mod_date = ((last_modified[0] - 1980) << 9) + (last_modified[1] << 5) + (last_modified[2] << 0);
+        let last_mod_time = (last_modified[5] >> 1) + (last_modified[4] << 5) + (last_modified[3] << 11);
+
+        let file_raw = file_raw;
+        let deflate = zip_crypto::ZipCrypto::deflate_encode_raw(level, file_raw.clone());
+
+        let mut crc = 0xffffffff;
+        for byte in file_raw.iter() { crc = crc::crc32(crc, *byte); };
+        let crc = !crc;
+
         File {
-            file_name: "".to_string(),
-            file_name_raw: "".to_string(),
-            file_size: 0,
-            last_mod_time: 0,
-            last_mod_date: 0,
-            file_raw: vec![],
-            deflate: vec![],
+            file_name,
+            file_name_raw,
+            file_size,
+            last_mod_time,
+            last_mod_date,
+            file_raw,
+            deflate,
             encrypt: vec![],
-            crc: 0
+            crc
         }
     }
 
-    fn set_meta(&mut self, uuid: &String, file_name: &str, file_size: u64, last_modified: &[u16]) {
-        self.file_name_raw = file_name.parse().unwrap();
-        self.file_name = format!("{}{}", *uuid, self.file_name_raw);
-
-        self.file_size = if file_size < 0xffffffff { file_size as u32 } else { 0xffffffff };
-
-        self.last_mod_date = ((last_modified[0] - 1980) << 9) + (last_modified[1] << 5) + (last_modified[2] << 0);
-        self.last_mod_time = (last_modified[5] >> 1) + (last_modified[4] << 5) + (last_modified[3] << 11);
-    }
-
-    fn set_file_raw(&mut self, file_raw: Vec<u8>, level: u32) {
-        self.file_raw = file_raw.clone();
-        // ToDo 果てしなく難しいかもしれないけどDeflateの計算はStreamで出来そう
-        self.deflate = zip_crypto::ZipCrypto::deflate_encode_raw(level, file_raw);
-
-        // ToDo CRCの計算も比較的簡単にStreamでできそう
-        let mut crc: u32 = 0xffffffff;
-        // for file_slice in self.file_raw.iter() { for byte in file_slice.iter() { crc = crc::crc32(crc, *byte); }; };
-        for byte in self.file_raw.iter() { crc = crc::crc32(crc, *byte); };
-        self.crc = !crc;
-    }
-
-    fn calc_file_raw(&mut self, level: u32) {
-        let file_raw = self.file_raw.clone();
-        // ToDo 果てしなく難しいかもしれないけどDeflateの計算はStreamで出来そう
-        self.deflate = zip_crypto::ZipCrypto::deflate_encode_raw(level, file_raw);
-
-        // ToDo CRCの計算も比較的簡単にStreamでできそう
-        let mut crc: u32 = 0xffffffff;
-        // for file_slice in self.file_raw.iter() { for byte in file_slice.iter() { crc = crc::crc32(crc, *byte); }; };
-        for byte in self.file_raw.iter() { crc = crc::crc32(crc, *byte); };
-        self.crc = !crc;
-    }
-}
-
-#[wasm_bindgen]
-pub struct FileSlice {
-    slice: Vec<u8>
-}
-
-#[wasm_bindgen]
-pub struct FileStream {
-    file_name: String,
-    stream: Vec<FileSlice>
+    fn get_file_name(& self) -> String { format!("{}", self.file_name) }
 }
 
 #[wasm_bindgen]
@@ -213,17 +187,29 @@ pub struct Zip {
     files: Vec<File>,
     is_zip64: bool,
     is_compress: bool,
-    compress_level: u32,
-    file_stream: Vec<FileStream>
+    compress_level: u32
+}
+
+#[wasm_bindgen]
+pub fn open_test(file_path: &str) {
+    let mut file = FII::open(file_path).unwrap();
+    let mut buf = Vec::new();
+    let _ = file.read_to_end(&mut buf).unwrap();
+    console_log!("{}\n{:?}", file_path, buf);
 }
 
 #[wasm_bindgen]
 impl Zip {
     #[wasm_bindgen(constructor)]
     pub fn new(seed: u32) -> Zip {
-        let uuid = uuid::parse(uuid::generate(seed));
-        let passwd = passwd::generate(16, seed);
-        Zip { seed, uuid, passwd, files: vec![], is_zip64: false, is_compress: true, compress_level: 6, file_stream: vec![] }
+        let mut mt = mt::MersenneTwister::new(seed);
+        let uuid = uuid::parse(uuid::generate(mt.next()));
+        let passwd = passwd::generate(16, mt.next());
+        Zip { seed, uuid, passwd, files: vec![], is_zip64: false, is_compress: true, compress_level: 6}
+    }
+
+    pub fn open_test(self, file_path: &str) {
+        console_log!("{}", file_path);
     }
 
     pub fn get_uuid(&mut self) -> String {
@@ -248,60 +234,9 @@ impl Zip {
         self.compress_level = level;
     }
 
-    pub fn create_file(&mut self, file_name: &str, file_size: u64, last_modified: &[u16]) {
-        let mut file = File::new();
-        file.set_meta(&self.uuid, file_name, file_size, last_modified);
-        let stream = FileStream {
-            file_name: file_name.to_string(),
-            stream: vec![]
-        };
-        self.file_stream.push(stream);
+    pub fn add_file(&mut self, file_name: &str, file_size: u64, last_modified:& [u16], file_raw:& [u8]) {
+        let mut file = File::new(&self.uuid, file_name, file_size, last_modified, Vec::from(file_raw), self.compress_level);
         self.files.push(file);
-    }
-
-    // pub fn add_file_raw_from_stream(&mut self, file_name: &str, file_raw: &[u8]) {
-    //     for file in self.files.iter_mut() {
-    //         if file.file_name == file_name.to_string() {
-    //             file.file_raw.extend(file_raw);
-    //             break;
-    //         }
-    //     }
-    // }
-    pub fn add_file_raw_from_stream(&mut self, file_name: &str, file_raw: &[u8]) {
-        let slice = FileSlice{
-            slice: Vec::from(file_raw)
-        };
-        for stream in self.file_stream.iter_mut() {
-            if stream.file_name == file_name.to_string() {
-                stream.stream.push(slice);
-                break;
-            }
-        }
-    }
-
-    // pub fn done_of_file_stream(&mut self, file_name: &str) {
-    //     for file in self.files.iter_mut() {
-    //         if file.file_name == file_name.to_string() {
-    //             file.calc_file_raw(self.compress_level);
-    //         }
-    //     }
-    // }
-    pub fn done_of_file_stream(&mut self, file_name: &str) {
-        let mut file_raw: Vec<Vec<u8>> = vec![];
-        for stream in self.file_stream.iter_mut() {
-            if stream.file_name == file_name.to_string() {
-                for slice in stream.stream.iter_mut() {
-                    console_log!("{}", slice.slice.len());
-                }
-                break;
-            }
-        }
-        // for file in self.files.iter_mut() {
-        //     if file.file_name == file_name.to_string() {
-        //         file.set_file_raw(file_raw.clone(), self.compress_level);
-        //         break;
-        //     }
-        // }
     }
 
     pub fn save(&mut self) -> Vec<u8> {
@@ -316,7 +251,7 @@ impl Zip {
             let body = data.encrypt.clone();
             let local_header = Zip::make_local_header(self.is_zip64, self.is_compress, data);
             let central_dir = Zip::make_central_directory_entry(self.is_zip64, &local_header, offset);
-            let file_entry_length = 30 + (byteorder::le_from_u16(local_header.file_name_length) + local_header.extra_field_length) as u32 + body.len() as u32;
+            let file_entry_length = 30 + (byteorder::swap_endian_from_u16(local_header.file_name_length) + local_header.extra_field_length) as u32 + body.len() as u32;
             file_entry.push(FileEntry{ local_header, body, offset });
             offset += file_entry_length;
             central_dir_entry.push(central_dir);
@@ -401,17 +336,17 @@ impl Zip {
 
     fn make_local_header(is_zip64: bool, is_compress: bool,  file: &File) -> LocalHeader {
         LocalHeader {
-            signature: byteorder::le_from_u32(LOCAL_HEADER_SIGNATURE),
-            version_needed: byteorder::le_from_u16( if is_zip64 { 0x002e } else { 0x0014 }),
-            general_flag: byteorder::le_from_u16(0x0001),
-            compression_method: byteorder::le_from_u16(if is_compress { 0x0008} else { 0x0000 }),
-            last_mod_time: byteorder::le_from_u16(file.last_mod_time),
-            last_mod_date: byteorder::le_from_u16(file.last_mod_date),
-            crc: byteorder::le_from_u32(file.crc),
-            compressed_size: byteorder::le_from_u32(file.encrypt.len() as u32),
-            un_compressed_size: byteorder::le_from_u32(file.file_size),
-            file_name_length: byteorder::le_from_u16(file.file_name.len() as u16),
-            extra_field_length: byteorder::le_from_u16(0x0000),
+            signature: byteorder::swap_endian_from_u32(LOCAL_HEADER_SIGNATURE),
+            version_needed: byteorder::swap_endian_from_u16( if is_zip64 { 0x002e } else { 0x0014 }),
+            general_flag: byteorder::swap_endian_from_u16(0x0001),
+            compression_method: byteorder::swap_endian_from_u16(if is_compress { 0x0008} else { 0x0000 }),
+            last_mod_time: byteorder::swap_endian_from_u16(file.last_mod_time),
+            last_mod_date: byteorder::swap_endian_from_u16(file.last_mod_date),
+            crc: byteorder::swap_endian_from_u32(file.crc),
+            compressed_size: byteorder::swap_endian_from_u32(file.encrypt.len() as u32),
+            un_compressed_size: byteorder::swap_endian_from_u32(file.file_size),
+            file_name_length: byteorder::swap_endian_from_u16(file.file_name.len() as u16),
+            extra_field_length: byteorder::swap_endian_from_u16(0x0000),
             file_name: Vec::from(file.file_name.clone()),
             extra_field: vec![]
         }
@@ -419,8 +354,8 @@ impl Zip {
 
     fn make_central_directory_entry(is_zip64: bool, local_header: &LocalHeader, offset: u32) -> CentralDirectoryEntry {
         CentralDirectoryEntry {
-            signature: byteorder::le_from_u32(CENTRAL_DIRECTORY_ENTRY_SIGNATURE),
-            version_made_by: byteorder::le_from_u16(0x003f),
+            signature: byteorder::swap_endian_from_u32(CENTRAL_DIRECTORY_ENTRY_SIGNATURE),
+            version_made_by: byteorder::swap_endian_from_u16(0x003f),
             version_needed: local_header.version_needed,
             general_flag: local_header.general_flag,
             compression_method:local_header.compression_method,
@@ -431,11 +366,11 @@ impl Zip {
             un_compressed_size: local_header.un_compressed_size,
             file_name_length: local_header.file_name_length,
             extra_field_length: local_header.extra_field_length,
-            file_comment_length: byteorder::le_from_u16(0x0000),
-            disk_number_start: byteorder::le_from_u16(if is_zip64 { 0xffff } else { 0x0000 }),
-            internal_file_attributes: byteorder::le_from_u16(0x0000),
-            external_file_attributes: byteorder::le_from_u32(0x00000000),
-            relative_offset_of_local_header: byteorder::le_from_u32(if is_zip64 { 0xffffffff } else { offset }),
+            file_comment_length: byteorder::swap_endian_from_u16(0x0000),
+            disk_number_start: byteorder::swap_endian_from_u16(if is_zip64 { 0xffff } else { 0x0000 }),
+            internal_file_attributes: byteorder::swap_endian_from_u16(0x0000),
+            external_file_attributes: byteorder::swap_endian_from_u32(0x00000000),
+            relative_offset_of_local_header: byteorder::swap_endian_from_u32(if is_zip64 { 0xffffffff } else { offset }),
             file_name: local_header.file_name.clone(),
             extra_field: vec![],
             file_comment: vec![]
@@ -445,23 +380,23 @@ impl Zip {
     fn make_end_of_central_directory(is_zip64:bool, file_entry: &Vec<FileEntry>, central_dir_entry: &Vec<CentralDirectoryEntry>) -> EndOfCentralDirectory {
         let mut size_of_cd: u32 = 0;
         for cd in central_dir_entry {
-            size_of_cd += (46 + byteorder::le_from_u16(cd.file_name_length) + cd.extra_field_length + cd.file_comment_length) as u32;
+            size_of_cd += (46 + byteorder::swap_endian_from_u16(cd.file_name_length) + cd.extra_field_length + cd.file_comment_length) as u32;
         };
 
         let mut offset_of_cd: u32 = 0;
         for fe in file_entry {
-            offset_of_cd += 30 + (byteorder::le_from_u16(fe.local_header.file_name_length) + fe.local_header.extra_field_length) as u32  + fe.body.len() as u32;
+            offset_of_cd += 30 + (byteorder::swap_endian_from_u16(fe.local_header.file_name_length) + fe.local_header.extra_field_length) as u32  + fe.body.len() as u32;
         }
 
         EndOfCentralDirectory {
-            signature: byteorder::le_from_u32(END_OF_CENTRAL_DIRECTORY_SIGNATURE),
-            num_of_disk: byteorder::le_from_u16(if is_zip64 { 0xffff } else { 0x0000 }),
-            disk_where_cd_start: byteorder::le_from_u16(if is_zip64 { 0xffff } else { 0x0000 }),
-            num_of_cd_on_disk: byteorder::le_from_u16(if is_zip64 { 0xffff } else { central_dir_entry.len() as u16 }),
-            num_of_cd: byteorder::le_from_u16(if is_zip64 { 0xffff } else { central_dir_entry.len() as u16 }),
-            size_of_cd: byteorder::le_from_u32(if is_zip64 { 0xffffffff } else { size_of_cd }),
-            offset_of_cd: byteorder::le_from_u32(if is_zip64 { 0xffffffff } else { offset_of_cd }),
-            zip_comment_length: byteorder::le_from_u16(0x0000),
+            signature: byteorder::swap_endian_from_u32(END_OF_CENTRAL_DIRECTORY_SIGNATURE),
+            num_of_disk: byteorder::swap_endian_from_u16(if is_zip64 { 0xffff } else { 0x0000 }),
+            disk_where_cd_start: byteorder::swap_endian_from_u16(if is_zip64 { 0xffff } else { 0x0000 }),
+            num_of_cd_on_disk: byteorder::swap_endian_from_u16(if is_zip64 { 0xffff } else { central_dir_entry.len() as u16 }),
+            num_of_cd: byteorder::swap_endian_from_u16(if is_zip64 { 0xffff } else { central_dir_entry.len() as u16 }),
+            size_of_cd: byteorder::swap_endian_from_u32(if is_zip64 { 0xffffffff } else { size_of_cd }),
+            offset_of_cd: byteorder::swap_endian_from_u32(if is_zip64 { 0xffffffff } else { offset_of_cd }),
+            zip_comment_length: byteorder::swap_endian_from_u16(0x0000),
             zip_comment: vec![]
         }
     }
