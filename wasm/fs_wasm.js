@@ -1,7 +1,7 @@
 
 let wasm;
 
-let cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
+const cachedTextDecoder = new TextDecoder('utf-8', { ignoreBOM: true, fatal: true });
 
 cachedTextDecoder.decode();
 
@@ -19,7 +19,7 @@ function getStringFromWasm0(ptr, len) {
 
 let WASM_VECTOR_LEN = 0;
 
-let cachedTextEncoder = new TextEncoder('utf-8');
+const cachedTextEncoder = new TextEncoder('utf-8');
 
 const encodeString = (typeof cachedTextEncoder.encodeInto === 'function'
     ? function (arg, view) {
@@ -75,8 +75,8 @@ function passStringToWasm0(arg, malloc, realloc) {
 * @param {string} file_path
 */
 export function open_test(file_path) {
-    var ptr0 = passStringToWasm0(file_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-    var len0 = WASM_VECTOR_LEN;
+    const ptr0 = passStringToWasm0(file_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+    const len0 = WASM_VECTOR_LEN;
     wasm.open_test(ptr0, len0);
 }
 
@@ -128,10 +128,15 @@ function _assertClass(instance, klass) {
 */
 export class Archive {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_archive_free(ptr);
     }
 }
@@ -139,10 +144,15 @@ export class Archive {
 */
 export class CentralDirectoryEntry {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_centraldirectoryentry_free(ptr);
     }
 }
@@ -150,10 +160,15 @@ export class CentralDirectoryEntry {
 */
 export class DataDescriptor {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_datadescriptor_free(ptr);
     }
 }
@@ -161,10 +176,15 @@ export class DataDescriptor {
 */
 export class EndOfCentralDirectory {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_endofcentraldirectory_free(ptr);
     }
 }
@@ -172,10 +192,15 @@ export class EndOfCentralDirectory {
 */
 export class File {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_file_free(ptr);
     }
 }
@@ -183,10 +208,15 @@ export class File {
 */
 export class FileEntry {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_fileentry_free(ptr);
     }
 }
@@ -194,10 +224,15 @@ export class FileEntry {
 */
 export class LocalHeader {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_localheader_free(ptr);
     }
 }
@@ -212,27 +247,31 @@ export class Zip {
         return obj;
     }
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_zip_free(ptr);
     }
     /**
     * @param {number} seed
     */
     constructor(seed) {
-        var ret = wasm.zip_new(seed);
+        const ret = wasm.zip_new(seed);
         return Zip.__wrap(ret);
     }
     /**
     * @param {string} file_path
     */
     open_test(file_path) {
-        var ptr = this.ptr;
-        this.ptr = 0;
-        var ptr0 = passStringToWasm0(file_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len0 = WASM_VECTOR_LEN;
+        const ptr = this.__destroy_into_raw();
+        const ptr0 = passStringToWasm0(file_path, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
         wasm.zip_open_test(ptr, ptr0, len0);
     }
     /**
@@ -240,11 +279,13 @@ export class Zip {
     */
     get_uuid() {
         try {
-            wasm.zip_get_uuid(8, this.ptr);
-            var r0 = getInt32Memory0()[8 / 4 + 0];
-            var r1 = getInt32Memory0()[8 / 4 + 1];
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.zip_get_uuid(retptr, this.ptr);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
             return getStringFromWasm0(r0, r1);
         } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_free(r0, r1);
         }
     }
@@ -253,11 +294,13 @@ export class Zip {
     */
     get_passwd() {
         try {
-            wasm.zip_get_passwd(8, this.ptr);
-            var r0 = getInt32Memory0()[8 / 4 + 0];
-            var r1 = getInt32Memory0()[8 / 4 + 1];
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.zip_get_passwd(retptr, this.ptr);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
             return getStringFromWasm0(r0, r1);
         } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
             wasm.__wbindgen_free(r0, r1);
         }
     }
@@ -265,15 +308,15 @@ export class Zip {
     * @returns {number}
     */
     get_compress_level() {
-        var ret = wasm.zip_get_compress_level(this.ptr);
+        const ret = wasm.zip_get_compress_level(this.ptr);
         return ret >>> 0;
     }
     /**
     * @param {string} passwd
     */
     set_passwd(passwd) {
-        var ptr0 = passStringToWasm0(passwd, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len0 = WASM_VECTOR_LEN;
+        const ptr0 = passStringToWasm0(passwd, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
         wasm.zip_set_passwd(this.ptr, ptr0, len0);
     }
     /**
@@ -283,52 +326,67 @@ export class Zip {
     * @param {Uint8Array} file_raw
     */
     add_file(file_name, file_size, last_modified, file_raw) {
-        var ptr0 = passStringToWasm0(file_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
-        var len0 = WASM_VECTOR_LEN;
+        const ptr0 = passStringToWasm0(file_name, wasm.__wbindgen_malloc, wasm.__wbindgen_realloc);
+        const len0 = WASM_VECTOR_LEN;
         uint64CvtShim[0] = file_size;
         const low1 = u32CvtShim[0];
         const high1 = u32CvtShim[1];
-        var ptr2 = passArray16ToWasm0(last_modified, wasm.__wbindgen_malloc);
-        var len2 = WASM_VECTOR_LEN;
-        var ptr3 = passArray8ToWasm0(file_raw, wasm.__wbindgen_malloc);
-        var len3 = WASM_VECTOR_LEN;
+        const ptr2 = passArray16ToWasm0(last_modified, wasm.__wbindgen_malloc);
+        const len2 = WASM_VECTOR_LEN;
+        const ptr3 = passArray8ToWasm0(file_raw, wasm.__wbindgen_malloc);
+        const len3 = WASM_VECTOR_LEN;
         wasm.zip_add_file(this.ptr, ptr0, len0, low1, high1, ptr2, len2, ptr3, len3);
     }
     /**
     * @returns {Uint8Array}
     */
     save() {
-        wasm.zip_save(8, this.ptr);
-        var r0 = getInt32Memory0()[8 / 4 + 0];
-        var r1 = getInt32Memory0()[8 / 4 + 1];
-        var v0 = getArrayU8FromWasm0(r0, r1).slice();
-        wasm.__wbindgen_free(r0, r1 * 1);
-        return v0;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            wasm.zip_save(retptr, this.ptr);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
+            var v0 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_free(r0, r1 * 1);
+            return v0;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
     /**
     * @param {Archive} archive
     * @returns {Uint8Array}
     */
     check_archive(archive) {
-        _assertClass(archive, Archive);
-        var ptr0 = archive.ptr;
-        archive.ptr = 0;
-        wasm.zip_check_archive(8, this.ptr, ptr0);
-        var r0 = getInt32Memory0()[8 / 4 + 0];
-        var r1 = getInt32Memory0()[8 / 4 + 1];
-        var v1 = getArrayU8FromWasm0(r0, r1).slice();
-        wasm.__wbindgen_free(r0, r1 * 1);
-        return v1;
+        try {
+            const retptr = wasm.__wbindgen_add_to_stack_pointer(-16);
+            _assertClass(archive, Archive);
+            var ptr0 = archive.ptr;
+            archive.ptr = 0;
+            wasm.zip_check_archive(retptr, this.ptr, ptr0);
+            var r0 = getInt32Memory0()[retptr / 4 + 0];
+            var r1 = getInt32Memory0()[retptr / 4 + 1];
+            var v1 = getArrayU8FromWasm0(r0, r1).slice();
+            wasm.__wbindgen_free(r0, r1 * 1);
+            return v1;
+        } finally {
+            wasm.__wbindgen_add_to_stack_pointer(16);
+        }
     }
 }
 /**
 */
 export class Zip64EndOfCentralDirectoryLocator {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_zip64endofcentraldirectorylocator_free(ptr);
     }
 }
@@ -336,17 +394,21 @@ export class Zip64EndOfCentralDirectoryLocator {
 */
 export class Zip64EndOfCentralDirectoryRecord {
 
-    free() {
+    __destroy_into_raw() {
         const ptr = this.ptr;
         this.ptr = 0;
 
+        return ptr;
+    }
+
+    free() {
+        const ptr = this.__destroy_into_raw();
         wasm.__wbg_zip64endofcentraldirectoryrecord_free(ptr);
     }
 }
 
 async function load(module, imports) {
     if (typeof Response === 'function' && module instanceof Response) {
-
         if (typeof WebAssembly.instantiateStreaming === 'function') {
             try {
                 return await WebAssembly.instantiateStreaming(module, imports);
@@ -365,7 +427,6 @@ async function load(module, imports) {
         return await WebAssembly.instantiate(bytes, imports);
 
     } else {
-
         const instance = await WebAssembly.instantiate(module, imports);
 
         if (instance instanceof WebAssembly.Instance) {
@@ -379,7 +440,7 @@ async function load(module, imports) {
 
 async function init(input) {
     if (typeof input === 'undefined') {
-        input = import.meta.url.replace(/\.js$/, '_bg.wasm');
+        input = new URL('fs_wasm_bg.wasm', import.meta.url);
     }
     const imports = {};
     imports.wbg = {};
@@ -393,6 +454,8 @@ async function init(input) {
     if (typeof input === 'string' || (typeof Request === 'function' && input instanceof Request) || (typeof URL === 'function' && input instanceof URL)) {
         input = fetch(input);
     }
+
+
 
     const { instance, module } = await load(await input, imports);
 
